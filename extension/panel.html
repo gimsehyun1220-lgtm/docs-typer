@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Docs Typer</title>
+  <link rel="stylesheet" href="panel.css">
+  <script type="module" src="panel.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Docs Typer</h1>
+      <p>완성된 글을 원하는 속도로 입력하세요.</p>
+    </header>
+
+    <section class="target" aria-labelledby="target-label">
+      <div>
+        <h2 id="target-label">대상 문서</h2>
+        <p id="target-title">현재 탭 확인 중…</p>
+      </div>
+      <button id="refresh" type="button" class="secondary">다시 확인</button>
+    </section>
+
+    <div class="field">
+      <label for="source">입력할 글</label>
+      <textarea id="source" rows="8" maxlength="60000" spellcheck="false" placeholder="완성된 글을 여기에 붙여넣으세요."></textarea>
+      <p id="estimate" class="meta">0자</p>
+    </div>
+
+    <div class="settings">
+      <div class="field">
+        <label for="speed">입력 속도</label>
+        <div class="speed">
+          <input id="speed" type="number" min="15" max="100" step="1" value="40" aria-describedby="speed-hint">
+          <span aria-hidden="true">WPM</span>
+        </div>
+        <p id="speed-hint">40 WPM은 분당 약 200자예요.</p>
+      </div>
+      <div class="presets" aria-label="속도 프리셋">
+        <button type="button" class="secondary" data-speed="25">느리게</button>
+        <button type="button" class="secondary" data-speed="40">보통</button>
+        <button type="button" class="secondary" data-speed="65">빠르게</button>
+      </div>
+    </div>
+
+    <section class="controls" aria-label="입력 조작">
+      <label class="confirmation" id="confirmation">
+        <input id="ready" type="checkbox">
+        <span id="ready-label">빈 문서에서 입력할 위치를 클릭했어요.</span>
+      </label>
+      <div class="progress" id="progress-wrap" hidden>
+        <progress id="progress" value="0" max="1" aria-label="입력 진행률"></progress>
+        <span id="progress-text"></span>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <div class="actions">
+        <button id="start" type="button" disabled>입력 시작</button>
+        <button id="stop" type="button" class="secondary" hidden>중지</button>
+      </div>
+    </section>
+
+    <details id="verification" hidden>
+      <summary>원문과 비교</summary>
+      <div class="field">
+        <label for="result-text">Google Docs에서 복사한 본문</label>
+        <textarea id="result-text" rows="4" spellcheck="false"></textarea>
+        <button id="compare" type="button" class="secondary">비교하기</button>
+        <p id="difference" role="status"></p>
+      </div>
+    </details>
+  </main>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Docs Typer",
+  "version": "0.1.0",
+  "description": "완성된 글을 설정한 속도로 Google Docs에 입력합니다.",
+  "minimum_chrome_version": "118",
+  "permissions": ["sidePanel", "debugger"],
+  "host_permissions": ["https://docs.google.com/*"],
+  "background": { "service_worker": "worker.js", "type": "module" },
+  "action": { "default_title": "Docs Typer 열기" },
+  "side_panel": { "default_path": "panel.html" }
+}
