@@ -1,40 +1,44 @@
 # Docs Typer
 
-완성된 글을 Google Docs에 입력하는 Chrome 사이드패널 확장입니다. 입력 중에 속도를 바꾸거나 일시정지할 수 있고, 입력을 마친 뒤 Docs 본문을 원문과 비교해 처음 달라진 위치를 확인할 수 있습니다.
+Docs Typer is a Chrome side panel extension that types a finished draft into Google Docs at a pace you choose. You can change the speed or pause while it runs. Afterward, compare the text in Docs with your draft to see where they first differ.
 
-## 설치
+## Install
 
-[설치 ZIP 다운로드](https://github.com/gimsehyun1220-lgtm/docs-typer/releases/download/v0.1.8/docs-typer-0.1.8.zip) · [v0.1.8 프리릴리스 변경 사항](https://github.com/gimsehyun1220-lgtm/docs-typer/releases/tag/v0.1.8)
+[Download the installation ZIP](https://github.com/gimsehyun1220-lgtm/docs-typer/releases/download/v0.1.8/docs-typer-0.1.8.zip) · [v0.1.8 pre-release notes](https://github.com/gimsehyun1220-lgtm/docs-typer/releases/tag/v0.1.8)
 
-Chrome 118 이상이 필요합니다.
+Requires Chrome 118 or later.
 
-1. 위 링크에서 `docs-typer-0.1.8.zip`을 내려받고 압축을 풉니다.
-2. 주소창에 `chrome://extensions`를 입력해 열고 **개발자 모드**를 켭니다.
-3. **압축해제된 확장 프로그램을 로드합니다**를 누르고 `manifest.json`이 들어 있는 폴더를 선택합니다.
-4. Chrome 도구 모음의 확장 프로그램 메뉴에서 **Docs Typer**를 선택합니다.
+1. Download and extract `docs-typer-0.1.8.zip`.
+2. Open `chrome://extensions` and turn on **Developer mode**.
+3. Click **Load unpacked** and select the folder containing `manifest.json`.
+4. Select **Docs Typer** from Chrome's Extensions menu to open the side panel.
 
-## 사용
+## Use
 
-1. 편집 권한이 있는 빈 Google Docs 문서를 열고 본문 커서를 원하는 위치에 둡니다.
-2. 사이드패널에 글을 붙여넣고 속도를 선택합니다. 대상 문서 제목을 확인하고 확인란을 체크한 뒤 **입력 시작**을 누릅니다.
-3. 입력 중에도 속도 값이나 프리셋을 바꿀 수 있습니다. 입력을 멈추려면 **일시정지** 또는 **중지**를 누릅니다. 재개하려면 같은 Docs 문서에서 이어 쓸 위치를 확인합니다. 중단 직전 글자가 들어갔는지 불확실하면 패널에 문서 확인 안내가 표시됩니다.
-4. 입력 후 Google Docs에서 본문을 복사해 **원문과 비교**에 붙여넣으면 원문과 붙여넣은 본문의 글자 수, 전체 내용, 처음 달라진 위치를 확인할 수 있습니다. 차이가 있으면 두 본문이 해당 위치로 스크롤됩니다.
+The v0.1.8 side panel is in Korean.
 
-한글, 영어, 이모지는 화면에 보이는 글자 단위로 처리합니다. 줄바꿈은 Enter 입력으로 보냅니다. 탭 문자 등 일부 제어 문자는 일반 공백으로 바꾼 뒤 사용해야 합니다. 입력 중 본문의 커서를 옮기거나 다른 내용을 편집하려면 먼저 일시정지하세요. 다른 브라우저 탭을 봐도 처음 선택한 문서에 입력을 계속합니다. 대상 탭을 닫거나 대상 문서에서 다른 페이지 또는 문서 내부 탭으로 이동하면 일시정지되고, 사이드패널을 닫으면 중지됩니다.
+1. Open a blank Google Doc you can edit and place the cursor where you want the text to begin.
+2. Paste your draft into the side panel and choose a speed. Check the target document title, select the confirmation checkbox, and start typing.
+3. You can change the speed, pause, or stop while the extension is typing. Before resuming, make sure the cursor is at the right spot in the same document. If the extension is unsure whether the last character was inserted, it will ask you to check the document.
+4. When typing finishes, copy the body text from Google Docs and paste it into the comparison section. The panel shows both texts in full, counts their characters, and scrolls both to the first difference.
 
-속도는 15~100 WPM 범위에서 조절할 수 있으며 기본값은 40 WPM입니다. 글자 5개를 한 단어로 계산합니다. 입력 간격은 8~12글자마다 평균 속도로 돌아오며, 40 WPM에서 목표 간격은 약 195~405ms입니다. 실제 소요 시간은 Chrome과 문서 응답에 따라 달라질 수 있습니다.
+The extension handles Korean, English, and emoji as visible characters and sends line breaks as Enter keystrokes. Replace tabs and other unsupported control characters with spaces before typing.
 
-## 권한과 데이터
+Pause before moving the cursor or editing the target document. You can switch to another browser tab while typing continues in the original document. Closing the target tab, leaving the document, or switching tabs within the document pauses the job. Closing the side panel stops it.
 
-입력할 때 Chrome의 `debugger` 권한으로 확인한 Docs 탭에만 연결합니다. Chrome에 디버깅 안내 배너가 표시될 수 있습니다. 이 권한은 일반 Chrome 탭의 디버깅이 가능한 권한이며, 확장은 대상 탭과 편집기 포커스를 확인한 뒤 입력 요청에 사용합니다. 입력이 끝나거나 일시정지되면 연결을 해제합니다. 글과 진행 상태는 실행 중 메모리에만 보관합니다. Google Docs가 자체적으로 편집 내용을 저장합니다.
+Typing speed ranges from 15 to 100 words per minute (WPM), with a default of 40. The extension counts five characters as one word. Timing varies in groups of 8 to 12 characters while targeting the selected average pace. At 40 WPM, the target interval is about 195 to 405 ms per character. Actual timing depends on Chrome and how quickly the document responds.
 
-버전 기록의 표시 방식은 Google Docs가 결정합니다. 시험 결과가 필요하면, 입력 완료와 Google Docs에 저장된 내용의 원문 일치를 각각 확인하세요.
+## Permissions and data
 
-## 개발 및 배포
+The Chrome `debugger` permission allows an extension to debug browser tabs. Docs Typer uses it to send input to the confirmed Google Docs tab after checking that the editor has focus. Chrome may display a debugging banner. Docs Typer detaches when typing pauses or ends.
 
-- 소스에서 설치하려면 Node.js 22 이상에서 `npm ci`와 `npm run build`를 실행한 뒤 Chrome에서 `dist` 폴더를 불러옵니다.
-- `npm test`는 TypeScript 빌드와 속도, 유니코드, 입력 중단 및 재개 회귀 테스트를 실행합니다. 워커 테스트의 Chrome API는 모의 구현입니다.
-- `npm run package`는 `release/docs-typer-0.1.8.zip`을 만듭니다. 패키징에는 `zip` 명령이 필요합니다.
-- GitHub Releases에 ZIP을 첨부할 수 있습니다. 개발자 모드로 설치한 사본을 업데이트하려면 새 폴더를 불러오거나 기존에 불러온 폴더의 파일을 갱신한 뒤 Chrome 확장 관리 화면에서 새로고침합니다.
+The extension keeps your draft and progress in memory while it runs. Google Docs saves edits and controls how they appear in version history. To verify the result, check that typing finished and compare the saved document against your draft.
 
-입력 시작·중지 흐름을 설계할 때 [LazyTyper](https://github.com/lykon7/LazyTyper)와 [Auto-Type](https://github.com/GitLitAF/Auto-Type)을 참고했습니다. 두 저장소의 소스 코드는 포함하지 않습니다.
+## Development
+
+- To install from source, use Node.js 22 or later. Run `npm ci` and `npm run build`, then load the `dist` folder in Chrome.
+- `npm test` builds the TypeScript project and runs tests for typing speed, Unicode, interruption, and resuming. The worker tests use mocked Chrome APIs.
+- `npm run package` uses the `zip` command to create `release/docs-typer-0.1.8.zip` for GitHub Releases.
+- To update an unpacked installation, load the new folder or replace the files in the existing folder and click **Reload** on the extension's card in `chrome://extensions`.
+
+The start and stop controls were inspired by [LazyTyper](https://github.com/lykon7/LazyTyper) and [Auto-Type](https://github.com/GitLitAF/Auto-Type).
