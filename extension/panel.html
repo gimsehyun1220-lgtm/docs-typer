@@ -11,21 +11,22 @@
   <main>
     <header>
       <h1>Docs Typer</h1>
-      <p>완성된 글을 원하는 속도로 입력하세요.</p>
     </header>
 
     <section class="target" aria-labelledby="target-label">
       <div>
         <h2 id="target-label">대상 문서</h2>
-        <p id="target-title">현재 탭 확인 중…</p>
+        <p id="target-title">문서 확인 중…</p>
       </div>
       <button id="refresh" type="button" class="secondary">다시 확인</button>
     </section>
 
-    <div class="field">
-      <label for="source">입력할 글</label>
-      <textarea id="source" rows="8" maxlength="60000" spellcheck="false" placeholder="완성된 글을 여기에 붙여넣으세요."></textarea>
-      <p id="estimate" class="meta">0자</p>
+    <div class="field source-field">
+      <div class="field-heading">
+        <label for="source">입력할 글</label>
+        <p id="estimate" class="meta">0자</p>
+      </div>
+      <textarea id="source" rows="7" maxlength="60000" spellcheck="false" placeholder="여기에 글을 붙여넣으세요"></textarea>
     </div>
 
     <div class="settings">
@@ -47,7 +48,7 @@
     <section class="controls" aria-label="입력 조작">
       <label class="confirmation" id="confirmation">
         <input id="ready" type="checkbox">
-        <span id="ready-label">빈 문서에서 입력할 위치를 클릭했어요.</span>
+        <span id="ready-label">빈 문서에 커서를 뒀습니다</span>
       </label>
       <div class="progress" id="progress-wrap" hidden>
         <progress id="progress" value="0" max="1" aria-label="입력 진행률"></progress>

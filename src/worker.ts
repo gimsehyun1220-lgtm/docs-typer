@@ -1,17 +1,18 @@
 import type { PanelCommand, Snapshot, Target, WorkerMessage } from './protocol.js';
-import { docsUrl, intervalMs, splitText, validateText } from './typing.js';
+import { createTypingPace, docsUrl, splitText, validateText } from './typing.js';
 
 type Job = {
   owner: ExtensionPort;
   target: Target;
   chunks: string[];
   index: number;
-  interval: number;
+  nextInterval: () => number;
   phase: Snapshot['phase'];
   message?: string;
   attached: boolean;
   busy: boolean;
   timer?: ReturnType<typeof setTimeout>;
+  lastTickStarted?: number;
 };
 
 let job: Job | undefined;
@@ -53,6 +54,7 @@ function sameTarget(a: Target | undefined, b: Target): boolean {
 
 function changePhase(current: Job, phase: Job['phase'], message?: string): void {
   clearTimeout(current.timer);
+  current.timer = undefined;
   current.phase = phase;
   current.message = message;
   publish(current);
@@ -86,21 +88,35 @@ async function sendCharacter(target: { tabId: number }, text: string): Promise<v
   await chrome.debugger.sendCommand(target, 'Input.insertText', { text });
 }
 
+function scheduleNext(current: Job, started: number): void {
+  clearTimeout(current.timer);
+  const remaining = current.nextInterval() - (performance.now() - started);
+  current.timer = setTimeout(() => {
+    current.timer = undefined;
+    void tick(current);
+  }, Math.max(0, remaining));
+}
+
 async function tick(current: Job): Promise<void> {
   if (current.phase !== 'running' || current.busy) return;
   const started = performance.now();
+  current.lastTickStarted = started;
   const target = { tabId: current.target.tabId };
   current.busy = true;
   let sending = false;
   try {
-    if (!sameTarget(await activeTarget(), current.target)) {
+    const tab = await chrome.tabs.get(target.tabId);
+    if (current.phase !== 'running') return;
+    if (tab.pendingUrl || docsUrl(tab.url) !== current.target.url) {
       changePhase(current, 'paused', '원래 문서를 열고 본문 커서를 확인해 주세요.');
       return;
     }
-    if (current.phase !== 'running') return;
     if (!current.attached) {
       await chrome.debugger.attach(target, '1.3');
       current.attached = true;
+      if (current.phase !== 'running') return;
+      // Keep the editor focused inside the target page when its browser tab goes into the background.
+      await chrome.debugger.sendCommand(target, 'Emulation.setFocusEmulationEnabled', { enabled: true });
     }
     if (current.phase !== 'running') return;
     const focus = await chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
@@ -129,15 +145,15 @@ async function tick(current: Job): Promise<void> {
   } finally {
     current.busy = false;
     if (current.phase === 'running') {
-      current.timer = setTimeout(() => void tick(current), Math.max(0, current.interval - (performance.now() - started)));
+      scheduleNext(current, started);
     } else {
       await release(current);
     }
   }
 }
 
-function pauseForTabChange(tabId?: number): void {
-  if (job?.phase === 'running' && (tabId === undefined || job.target.tabId === tabId)) {
+function pauseForTabChange(tabId: number): void {
+  if (job?.phase === 'running' && job.target.tabId === tabId) {
     changePhase(job, 'paused', '대상 문서가 바뀌었어요. 원래 문서의 본문 커서를 확인해 주세요.');
   }
 }
@@ -153,18 +169,25 @@ async function handle(port: ExtensionPort, data: unknown, connected: () => boole
     if (typeof command.text !== 'string' || !command.target || typeof command.wpm !== 'number') return;
     const problem = validateText(command.text);
     if (problem) throw new Error(problem);
-    const interval = intervalMs(command.wpm);
+    const nextInterval = createTypingPace(command.wpm);
     const target = await activeTarget();
     if (!connected()) return;
     if (job) throw new Error('다른 입력 작업이 진행 중이에요. 먼저 기존 작업을 중지해 주세요.');
     if (!target || !sameTarget(target, command.target)) throw new Error('대상 문서가 바뀌었어요. 문서를 다시 확인해 주세요.');
-    job = { owner: port, target, chunks: splitText(command.text), index: 0, interval, phase: 'running', attached: false, busy: false };
+    job = { owner: port, target, chunks: splitText(command.text), index: 0, nextInterval, phase: 'running', attached: false, busy: false };
     publish(job);
     void tick(job);
     return;
   }
   const current = job;
   if (!current || current.owner !== port) return;
+  if (command.type === 'speed' && (current.phase === 'running' || current.phase === 'paused')) {
+    current.nextInterval = createTypingPace(command.wpm);
+    if (current.timer !== undefined && current.lastTickStarted !== undefined) {
+      scheduleNext(current, current.lastTickStarted);
+    }
+    return;
+  }
   if (command.type === 'pause' && current.phase === 'running') {
     changePhase(current, 'paused', '일시정지했어요. 문서의 본문 커서를 확인하고 다시 시작할 수 있어요.');
   }
@@ -206,26 +229,10 @@ chrome.runtime.onConnect.addListener((port) => {
   });
 });
 
-chrome.tabs.onActivated.addListener(({ tabId }) => {
-  if (job && job.target.tabId !== tabId) pauseForTabChange();
-});
 chrome.tabs.onRemoved.addListener(pauseForTabChange);
 chrome.tabs.onReplaced.addListener((_added, removed) => pauseForTabChange(removed));
 chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (change.status === 'loading' || (change.url && docsUrl(change.url) !== job?.target.url)) pauseForTabChange(tabId);
-});
-chrome.windows.onFocusChanged.addListener((windowId) => {
-  const current = job;
-  if (current?.phase !== 'running') return;
-  if (windowId < 0) {
-    pauseForTabChange();
-    return;
-  }
-  void activeTarget().then((target) => {
-    if (job === current && !sameTarget(target, current.target)) pauseForTabChange();
-  }).catch(() => {
-    if (job === current) pauseForTabChange();
-  });
 });
 chrome.debugger.onDetach.addListener(({ tabId }) => {
   const current = job;

@@ -10,6 +10,7 @@ export type Snapshot = {
 export type PanelCommand =
   | { type: 'target' }
   | { type: 'start'; target: Target; text: string; wpm: number }
+  | { type: 'speed'; wpm: number }
   | { type: 'pause' | 'resume' | 'stop' };
 export type WorkerMessage =
   | { type: 'state'; state: Snapshot }

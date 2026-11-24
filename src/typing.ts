@@ -28,6 +28,25 @@ export function intervalMs(wpm: number): number {
   return 60_000 / (5 * wpm);
 }
 
+export function createTypingPace(wpm: number, random = Math.random): () => number {
+  const baseline = intervalMs(wpm);
+  let position = 0;
+  let length = 0;
+  let amplitude = 0;
+
+  // Each full wave has zero mean, so successive waves stay centered on the selected WPM.
+  return () => {
+    if (position === length) {
+      position = 0;
+      length = 8 + 2 * Math.floor(random() * 3);
+      amplitude = (0.25 + random() * 0.10) * (random() < 0.5 ? -1 : 1);
+    }
+    const offset = amplitude * Math.sin(2 * Math.PI * position / length);
+    position += 1;
+    return baseline * (1 + offset);
+  };
+}
+
 export function docsUrl(value: string | undefined): string | undefined {
   if (!value) return;
   try {

@@ -30,14 +30,11 @@ declare const chrome: {
     setPanelBehavior(options: { openPanelOnActionClick: boolean }): Promise<void>;
   };
   tabs: {
+    get(tabId: number): Promise<BrowserTab>;
     query(options: { active: boolean; lastFocusedWindow: boolean }): Promise<BrowserTab[]>;
-    onActivated: BrowserEvent<[{ tabId: number; windowId: number }]>;
     onUpdated: BrowserEvent<[number, { url?: string; status?: string }]>;
     onRemoved: BrowserEvent<[number]>;
     onReplaced: BrowserEvent<[number, number]>;
-  };
-  windows: {
-    onFocusChanged: BrowserEvent<[number]>;
   };
   debugger: {
     attach(target: { tabId: number }, version: string): Promise<void>;

@@ -34,7 +34,7 @@ function send(command: PanelCommand): void {
   } catch {
     connected = false;
     pending = false;
-    report('확장 프로그램 연결이 끊겼어요. 사이드패널을 다시 열어 주세요.', true);
+    report('연결이 끊겼습니다. 패널을 다시 여세요.', true);
     render();
   }
 }
@@ -44,30 +44,42 @@ function measure(): void {
   count = splitText(source.value).length;
 }
 
+function isValidSpeed(wpm: number): boolean {
+  return Number.isInteger(wpm) && wpm >= MIN_WPM && wpm <= MAX_WPM;
+}
+
+function updateSpeed(): void {
+  const wpm = speed.valueAsNumber;
+  if (isValidSpeed(wpm) && (state.phase === 'running' || state.phase === 'paused')) {
+    send({ type: 'speed', wpm });
+  }
+  render();
+}
+
 function render(): void {
   const { phase, done, total } = state;
   const working = phase === 'running' || phase === 'paused';
   const title = working ? state.target?.title : target?.title;
-  element('target-title').textContent = title ?? 'Google Docs 편집 탭을 열어 주세요.';
+  element('target-title').textContent = title ?? 'Google Docs 문서를 여세요.';
   element('confirmation').hidden = phase === 'running';
   element('ready-label').textContent = phase === 'paused'
-    ? '원래 문서에서 이어 쓸 위치를 확인했어요.'
-    : '빈 문서에서 입력할 위치를 클릭했어요.';
+    ? '이어서 입력할 위치를 확인했습니다'
+    : '빈 문서에 커서를 뒀습니다';
   source.readOnly = working;
-  speed.disabled = working;
+  speed.disabled = !connected || (pending && !working);
   refresh.disabled = working || pending || !connected;
   for (const preset of presets) {
-    preset.disabled = working;
+    preset.disabled = speed.disabled;
     preset.setAttribute('aria-pressed', String(Number(preset.dataset.speed) === speed.valueAsNumber));
   }
   const wpm = speed.valueAsNumber;
-  const validSpeed = Number.isInteger(wpm) && wpm >= MIN_WPM && wpm <= MAX_WPM;
+  const validSpeed = isValidSpeed(wpm);
   const seconds = validSpeed ? Math.ceil(count * intervalMs(wpm) / 1000) : 0;
   const time = seconds >= 60 ? `${Math.floor(seconds / 60)}분 ${seconds % 60}초` : `${seconds}초`;
   element('estimate').textContent = count && validSpeed
     ? `${formatted.format(count)}자 · 약 ${time}`
     : `${formatted.format(count)}자`;
-  element('speed-hint').textContent = validSpeed ? `${wpm} WPM은 분당 약 ${wpm * 5}자예요.` : '15~100 사이의 정수를 입력해 주세요.';
+  element('speed-hint').textContent = validSpeed ? `분당 약 ${wpm * 5}자` : '15~100 사이의 정수를 입력하세요.';
   start.textContent = phase === 'running' ? '일시정지' : phase === 'paused' ? '재개' : '입력 시작';
   start.disabled = !connected || pending
     || (phase === 'paused' && !ready.checked)
@@ -92,12 +104,12 @@ source.addEventListener('input', () => {
   report(source.value && inputProblem ? inputProblem : '', true);
   render();
 });
-speed.addEventListener('input', render);
+speed.addEventListener('input', updateSpeed);
 ready.addEventListener('change', render);
 for (const preset of presets) {
   preset.addEventListener('click', () => {
     speed.value = preset.dataset.speed ?? String(DEFAULT_WPM);
-    render();
+    updateSpeed();
   });
 }
 start.addEventListener('click', () => {
@@ -121,8 +133,8 @@ stop.addEventListener('click', () => {
 element<HTMLButtonElement>('compare').addEventListener('click', () => {
   const mismatch = firstDifference(approved, resultText.value);
   element('difference').textContent = mismatch === undefined
-    ? '복사한 본문이 원문과 일치해요.'
-    : `${formatted.format(mismatch)}번째 글자부터 달라요. 공백과 줄바꿈을 확인해 주세요.`;
+    ? '원문과 일치합니다.'
+    : `${formatted.format(mismatch)}번째 글자부터 다릅니다.`;
 });
 
 port.onMessage.addListener((data) => {
@@ -147,7 +159,7 @@ port.onDisconnect.addListener(() => {
   connected = false;
   pending = false;
   state = { ...state, phase: 'review' };
-  report('확장 프로그램 연결이 끊겼어요. 문서에서 마지막 입력 위치를 확인해 주세요.', true);
+  report('연결이 끊겼습니다. 문서에서 마지막으로 입력된 글자를 확인하세요.', true);
   render();
 });
 
