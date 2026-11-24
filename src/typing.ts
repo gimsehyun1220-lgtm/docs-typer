@@ -60,10 +60,32 @@ export function docsUrl(value: string | undefined): string | undefined {
   }
 }
 
-export function firstDifference(expected: string, actual: string): number | undefined {
+function differenceParts(chars: string[], start: number, end: number) {
+  return {
+    before: chars.slice(0, start).join(''),
+    change: chars.slice(start, end).join(''),
+    after: chars.slice(end).join(''),
+    count: end - start,
+  };
+}
+
+export function firstDifference(expected: string, actual: string) {
   const left = splitText(expected);
   const right = splitText(actual);
-  for (let i = 0; i < Math.max(left.length, right.length); i += 1) {
-    if (left[i] !== right[i]) return i + 1;
+  let start = 0;
+  while (start < left.length && left[start] === right[start]) start += 1;
+  if (start === left.length && start === right.length) return;
+
+  // Trim the shared ending too, so a missing character doesn't flag all the text after it.
+  let leftEnd = left.length;
+  let rightEnd = right.length;
+  while (leftEnd > start && rightEnd > start && left[leftEnd - 1] === right[rightEnd - 1]) {
+    leftEnd -= 1;
+    rightEnd -= 1;
   }
+  return {
+    position: start + 1,
+    expected: differenceParts(left, start, leftEnd),
+    actual: differenceParts(right, start, rightEnd),
+  };
 }

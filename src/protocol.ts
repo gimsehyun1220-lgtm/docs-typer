@@ -9,6 +9,7 @@ export type Snapshot = {
 };
 export type PanelCommand =
   | { type: 'target' }
+  | { type: 'keep-alive' }
   | { type: 'start'; target: Target; text: string; wpm: number }
   | { type: 'speed'; wpm: number }
   | { type: 'pause' | 'resume' | 'stop' };

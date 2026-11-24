@@ -6,9 +6,46 @@ test('keeps graphemes and blank lines intact', () => {
   const source = '한A\r\n\r\n👩🏽‍💻e\u0301\n';
   assert.deepEqual(splitText(source), ['한', 'A', '\n', '\n', '👩🏽‍💻', 'e\u0301', '\n']);
   assert.equal(firstDifference(source, '한A\n\n👩🏽‍💻e\u0301\n'), undefined);
-  assert.equal(firstDifference(source, '한A\n👩🏽‍💻e\u0301\n'), 4);
+  assert.deepEqual(firstDifference(source, '한A\n👩🏽‍💻e\u0301\n'), {
+    position: 4,
+    expected: { before: '한A\n', change: '\n', after: '👩🏽‍💻e\u0301\n', count: 1 },
+    actual: { before: '한A\n', change: '', after: '👩🏽‍💻e\u0301\n', count: 0 },
+  });
   assert.equal(validateText('한글\nEnglish'), undefined);
   assert.ok(validateText('x\ty'));
+});
+
+test('isolates missing, extra and replaced graphemes, including at the end', () => {
+  assert.deepEqual(firstDifference('한👩🏽‍💻글', '한글'), {
+    position: 2,
+    expected: { before: '한', change: '👩🏽‍💻', after: '글', count: 1 },
+    actual: { before: '한', change: '', after: '글', count: 0 },
+  });
+  assert.deepEqual(firstDifference('한글', '한글 '), {
+    position: 3,
+    expected: { before: '한글', change: '', after: '', count: 0 },
+    actual: { before: '한글', change: ' ', after: '', count: 1 },
+  });
+  assert.deepEqual(firstDifference('빨간색', '파란색'), {
+    position: 1,
+    expected: { before: '', change: '빨간', after: '색', count: 2 },
+    actual: { before: '', change: '파란', after: '색', count: 2 },
+  });
+});
+
+test('keeps the full text around a difference without cutting off graphemes', () => {
+  const before = '한'.repeat(20);
+  const missing = '👩🏽‍💻'.repeat(33);
+  const after = '글'.repeat(20);
+  const result = firstDifference(before + missing + after, before + after);
+  assert.equal(result.position, 21);
+  assert.deepEqual(result.expected, {
+    before,
+    change: missing,
+    after,
+    count: 33,
+  });
+  assert.deepEqual(result.actual, { before, change: '', after, count: 0 });
 });
 
 test('derives an interval from the pace the user chooses', () => {

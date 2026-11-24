@@ -21,6 +21,7 @@ async function harness(t) {
   const updated = new Event();
   let focused = true;
   let emulateFocus = false;
+  let format = 'plain';
   let onWrite = () => {};
   const port = {
     name: 'docs-typer-panel',
@@ -52,10 +53,11 @@ async function harness(t) {
           return;
         }
         if (command === 'Runtime.evaluate') {
-          return { result: { value: focused && (active.id === originalTab.id || emulateFocus) } };
+          const hasFocus = focused && (active.id === originalTab.id || emulateFocus);
+          return { result: { value: hasFocus ? format : undefined } };
         }
         log.push([command, debuggee.tabId, params.text ?? params.type]);
-        await onWrite();
+        await onWrite(params);
       },
       onDetach: new Event(),
     },
@@ -67,6 +69,7 @@ async function harness(t) {
     responses, log, updated,
     setActive(value) { active = value; },
     setFocused(value) { focused = value; },
+    setFormat(value) { format = value; },
     onWrite(callback) { onWrite = callback; },
     command(data) { port.onMessage.emit(data); },
     close() { port.onDisconnect.emit(); },
@@ -152,6 +155,46 @@ test('uses the same confirmed tab for Korean, line breaks, and emoji', async (t)
     ['Input.insertText', 7, '👩🏽‍💻'],
   ]);
   assert.deepEqual(tool.log.at(-1), ['detach', 7]);
+});
+
+test('turns off bold before writing and leaves regular text alone', async (t) => {
+  const tool = await harness(t);
+  tool.setFormat('bold');
+  tool.onWrite(({ code, type, modifiers, text }) => {
+    if (code !== 'KeyB') return;
+    assert.equal(modifiers, navigator.platform.startsWith('Mac') ? 4 : 2);
+    assert.equal(text, undefined);
+    if (type === 'rawKeyDown') tool.setFormat('plain');
+  });
+  tool.start('한글');
+  await until(() => stateIs(tool, 'complete', 2));
+  assert.deepEqual(writes(tool), [
+    ['Input.dispatchKeyEvent', 7, 'rawKeyDown'],
+    ['Input.dispatchKeyEvent', 7, 'keyUp'],
+    ['Input.insertText', 7, '한'],
+    ['Input.insertText', 7, '글'],
+  ]);
+});
+
+test('pauses before writing if bold cannot be turned off', async (t) => {
+  const tool = await harness(t);
+  tool.setFormat('bold');
+  tool.start('ab');
+  await until(() => stateIs(tool, 'paused', 0));
+  assert.equal(writes(tool).length, 2);
+  assert.ok(writes(tool).every(([method]) => method === 'Input.dispatchKeyEvent'));
+  tool.setFormat('plain');
+  tool.command({ type: 'resume' });
+  await until(() => stateIs(tool, 'complete', 2));
+  assert.deepEqual(writes(tool).slice(2).map(([, , text]) => text), ['a', 'b']);
+});
+
+test('writes to a focused editor when the bold toolbar state is unavailable', async (t) => {
+  const tool = await harness(t);
+  tool.setFormat('unknown');
+  tool.start('한');
+  await until(() => stateIs(tool, 'complete', 1));
+  assert.deepEqual(writes(tool), [['Input.insertText', 7, '한']]);
 });
 
 test('retains editor focus and writes to the original document while another tab is active', async (t) => {

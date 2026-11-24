@@ -18,14 +18,21 @@ type Job = {
 let job: Job | undefined;
 const panelPath = chrome.runtime.getURL('panel.html');
 
-function guardExpression(target: Target): string {
-  return `(() => {
-    const url = new URL(location.href);
-    const tab = url.searchParams.get('tab') || 't.0';
-    const path = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
-    return url.origin + path + '?tab=' + tab === ${JSON.stringify(target.url)}
-      && document.activeElement?.matches('iframe.docs-texteventtarget-iframe') === true;
-  })()`;
+async function editorFormat(target: Target): Promise<'plain' | 'bold' | 'unknown' | undefined> {
+  const response = await chrome.debugger.sendCommand({ tabId: target.tabId }, 'Runtime.evaluate', {
+    expression: `(() => {
+      const url = new URL(location.href);
+      const tab = url.searchParams.get('tab') || 't.0';
+      const path = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
+      if (url.origin + path + '?tab=' + tab !== ${JSON.stringify(target.url)}
+        || !document.activeElement?.matches('iframe.docs-texteventtarget-iframe')) return;
+
+      const bold = document.getElementById('boldButton')?.getAttribute('aria-pressed');
+      return bold === 'true' ? 'bold' : bold === 'false' ? 'plain' : 'unknown';
+    })()`,
+    returnByValue: true,
+  }) as { result?: { value?: 'plain' | 'bold' | 'unknown' } };
+  return response?.result?.value;
 }
 
 function post(port: ExtensionPort, message: WorkerMessage): void {
@@ -88,6 +95,14 @@ async function sendCharacter(target: { tabId: number }, text: string): Promise<v
   await chrome.debugger.sendCommand(target, 'Input.insertText', { text });
 }
 
+async function toggleBold(target: { tabId: number }): Promise<void> {
+  // CDP modifier bits: Meta = 4, Control = 2.
+  const modifiers = navigator.platform.startsWith('Mac') ? 4 : 2;
+  const key = { key: 'b', code: 'KeyB', windowsVirtualKeyCode: 66, modifiers };
+  await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', { type: 'rawKeyDown', ...key });
+  await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', { type: 'keyUp', ...key });
+}
+
 function scheduleNext(current: Job, started: number): void {
   clearTimeout(current.timer);
   const remaining = current.nextInterval() - (performance.now() - started);
@@ -119,14 +134,21 @@ async function tick(current: Job): Promise<void> {
       await chrome.debugger.sendCommand(target, 'Emulation.setFocusEmulationEnabled', { enabled: true });
     }
     if (current.phase !== 'running') return;
-    const focus = await chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
-      expression: guardExpression(current.target),
-      returnByValue: true,
-    }) as { result?: { value?: boolean } };
+    let format = await editorFormat(current.target);
     if (current.phase !== 'running') return;
-    if (!focus?.result?.value) {
+    if (!format) {
       changePhase(current, 'paused', 'Google Docs 본문을 클릭해 입력 위치를 잡은 다음 재개해 주세요.');
       return;
+    }
+    if (format === 'bold') {
+      await toggleBold(target);
+      if (current.phase !== 'running') return;
+      format = await editorFormat(current.target);
+      if (current.phase !== 'running') return;
+      if (format !== 'plain') {
+        changePhase(current, 'paused', 'Docs 도구 모음에서 굵게(B)가 꺼져 있는지 확인하고, 본문 커서를 둔 뒤 재개해 주세요.');
+        return;
+      }
     }
     sending = true;
     await sendCharacter(target, current.chunks[current.index]);
@@ -161,6 +183,7 @@ function pauseForTabChange(tabId: number): void {
 async function handle(port: ExtensionPort, data: unknown, connected: () => boolean): Promise<void> {
   const command = data as PanelCommand | undefined;
   if (!command || typeof command !== 'object') return;
+  if (command.type === 'keep-alive') return;
   if (command.type === 'target') {
     post(port, { type: 'target', target: await activeTarget() });
     return;
